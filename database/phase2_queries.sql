@@ -187,3 +187,93 @@ WHERE r.status = 'paid' AND r.user_id = (SELECT id FROM users ORDER BY created_a
 SELECT first_name, last_name 
 FROM users 
 WHERE role = 'admin';
+
+-- 12. نام کاربرانی که حداقل 2 بلیط خریداری کرده‌اند
+SELECT u.first_name, u.last_name 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+WHERE r.status = 'paid' 
+GROUP BY u.id 
+HAVING COUNT(r.id) >= 2;
+
+-- 13. کاربرانی که حداکثر 2 بلیط فوتبال خریده‌اند
+SELECT u.first_name, u.last_name 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+JOIN tickets t ON r.ticket_id = t.id 
+WHERE r.status = 'paid' AND t.sport_type = 'football' 
+GROUP BY u.id 
+HAVING COUNT(r.id) <= 2;
+
+-- 14. کاربرانی که از تمام انواع مسابقات حداقل یک بار بلیط خریده‌اند
+SELECT u.email, u.phone 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+JOIN tickets t ON r.ticket_id = t.id 
+WHERE r.status = 'paid' AND t.sport_type IN ('football', 'volleyball', 'basketball') 
+GROUP BY u.id 
+HAVING COUNT(DISTINCT t.sport_type) = 3;
+
+-- 15. اطلاعات بلیط‌های خریداری‌شده امروز با ترتیب ساعت
+SELECT t.*, p.paid_at 
+FROM tickets t 
+JOIN reservations r ON t.id = r.ticket_id 
+JOIN payments p ON r.id = p.reservation_id 
+WHERE p.status = 'success' AND DATE(p.paid_at) = CURRENT_DATE 
+ORDER BY p.paid_at ASC;
+
+-- 16. دومین بلیط پرفروش
+SELECT t.id, t.home_team, t.away_team 
+FROM tickets t 
+JOIN reservations r ON t.id = r.ticket_id 
+WHERE r.status = 'paid' 
+GROUP BY t.id 
+ORDER BY COUNT(r.id) DESC 
+LIMIT 1 OFFSET 1;
+
+-- 17. نام پشتیبان با بیشترین لغو رزرو به همراه درصد
+SELECT a.first_name, a.last_name, COUNT(r.id) AS cancels, 
+       (COUNT(r.id) * 100.0 / (SELECT COUNT(*) FROM reservations WHERE status = 'cancelled')) AS percent_of_total 
+FROM users a 
+JOIN reservations r ON a.id = r.admin_id 
+WHERE r.status = 'cancelled' 
+GROUP BY a.id 
+ORDER BY cancels DESC 
+LIMIT 1;
+
+-- 18. تغییر فامیلی کاربری که بیشترین کنسلی را داشته به "Reddington"
+UPDATE users 
+SET last_name = 'Reddington' 
+WHERE id = (
+    SELECT user_id 
+    FROM reservations 
+    WHERE status = 'cancelled' 
+    GROUP BY user_id 
+    ORDER BY COUNT(id) DESC 
+    LIMIT 1
+);
+
+-- 19. حذف تمام بلیط‌های کنسل‌شده کاربر ردینگتون
+DELETE FROM reservations 
+WHERE status = 'cancelled' AND user_id = (SELECT id FROM users WHERE last_name = 'Reddington' LIMIT 1);
+
+-- 20. پاک کردن تمام بلیط‌های کنسل‌شده در سیستم
+DELETE FROM reservations 
+WHERE status = 'cancelled';
+
+-- 21. کاهش 10 درصدی قیمت بلیط‌های دیروز آزادی
+UPDATE tickets 
+SET price = price * 0.9 
+WHERE venue = 'Azadi Stadium' AND DATE(match_date) = CURRENT_DATE - INTERVAL '1 day';
+
+-- 22. موضوع و تعداد گزارش‌ها برای بلیط با بیشترین گزارش
+SELECT category, COUNT(*) AS report_count 
+FROM reports 
+WHERE reference_id = (
+    SELECT reference_id 
+    FROM reports 
+    GROUP BY reference_id 
+    ORDER BY COUNT(id) DESC 
+    LIMIT 1
+) 
+GROUP BY category;
