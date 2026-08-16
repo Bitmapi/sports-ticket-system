@@ -34,3 +34,53 @@ CREATE TABLE reservations (
     expires_at TIMESTAMP NOT NULL,
     CONSTRAINT chk_expiration CHECK (expires_at > reserved_at)
 );
+
+CREATE TABLE payments (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
+    reservation_id INT NOT NULL REFERENCES reservations(id),
+    amount NUMERIC(10, 2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    status VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('success', 'failed', 'pending')),
+    paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE reports (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
+    reference_id INT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    status VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed'))
+);
+
+CREATE TABLE football_details (
+    ticket_id INT PRIMARY KEY REFERENCES tickets(id) ON DELETE CASCADE,
+    tournament VARCHAR(100),
+    venue_name VARCHAR(150),
+    seat_tier VARCHAR(50),
+    row_num INT,
+    seat_num INT,
+    ticket_type VARCHAR(50),
+    features JSONB
+);
+
+CREATE TABLE volleyball_details (
+    ticket_id INT PRIMARY KEY REFERENCES tickets(id) ON DELETE CASCADE,
+    tournament VARCHAR(100),
+    hall_name VARCHAR(150),
+    seat_tier VARCHAR(50),
+    row_num INT,
+    seat_num INT,
+    features JSONB
+);
+
+CREATE TABLE basketball_details (
+    ticket_id INT PRIMARY KEY REFERENCES tickets(id) ON DELETE CASCADE,
+    tournament VARCHAR(100),
+    hall_name VARCHAR(150),
+    seat_tier VARCHAR(50),
+    row_num INT,
+    seat_num INT,
+    features JSONB
+);
