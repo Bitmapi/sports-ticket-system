@@ -1,0 +1,93 @@
+erDiagram
+    USERS ||--o{ RESERVATIONS : places
+    USERS ||--o{ PAYMENTS : pays
+    USERS ||--o{ REPORTS : submits
+    
+    TICKETS ||--o{ RESERVATIONS : contains
+    TICKETS ||--o| FOOTBALL_DETAILS : has_details
+    TICKETS ||--o| VOLLEYBALL_DETAILS : has_details
+    TICKETS ||--o| BASKETBALL_DETAILS : has_details
+    
+    RESERVATIONS ||--o{ PAYMENTS : generates
+
+    USERS {
+        int id PK
+        string first_name
+        string last_name
+        string phone UK
+        string email UK
+        string role
+        string city
+        string password_hash
+        string status
+    }
+
+    TICKETS {
+        int id PK
+        string sport_type
+        string home_team
+        string away_team
+        datetime match_date
+        string venue
+        decimal price
+        int capacity
+        string seat_tier
+    }
+
+    RESERVATIONS {
+        int id PK
+        int user_id FK
+        int ticket_id FK
+        string status
+        datetime reserved_at
+        datetime expires_at
+    }
+
+    PAYMENTS {
+        int id PK
+        int user_id FK
+        int reservation_id FK
+        decimal amount
+        string payment_method
+        string status
+    }
+
+    FOOTBALL_DETAILS {
+        int ticket_id PK
+        string tournament
+        string venue_name
+        string seat_tier
+        int row_num
+        int seat_num
+        string ticket_type
+        string features
+    }
+
+    VOLLEYBALL_DETAILS {
+        int ticket_id PK
+        string tournament
+        string hall_name
+        string seat_tier
+        int row_num
+        int seat_num
+        string features
+    }
+
+    BASKETBALL_DETAILS {
+        int ticket_id PK
+        string tournament
+        string hall_name
+        string seat_tier
+        int row_num
+        int seat_num
+        string features
+    }
+
+    REPORTS {
+        int id PK
+        int user_id FK
+        int reference_id
+        string category
+        string description
+        string status
+    }
