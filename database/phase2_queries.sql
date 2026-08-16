@@ -277,3 +277,129 @@ WHERE reference_id = (
     LIMIT 1
 ) 
 GROUP BY category;
+
+
+-- next step >>>>>>>>>>>>>>>>>>>>>>>>
+
+-- 1. دریافت ایمیل/تلفن و بازگرداندن لیست بلیط‌ها
+CREATE OR REPLACE FUNCTION get_user_tickets(p_contact VARCHAR)
+RETURNS TABLE(ticket_id INT, home_team VARCHAR, away_team VARCHAR, paid_at TIMESTAMP) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT t.id, t.home_team, t.away_team, p.paid_at
+    FROM tickets t 
+    JOIN reservations r ON t.id = r.ticket_id 
+    JOIN payments p ON r.id = p.reservation_id 
+    JOIN users u ON r.user_id = u.id
+    WHERE (u.email = p_contact OR u.phone = p_contact) AND p.status = 'success' 
+    ORDER BY p.paid_at;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. نام کاربرانی که رزروشان توسط ادمین خاصی لغو شده
+CREATE OR REPLACE FUNCTION get_cancelled_users_by_admin(p_admin_contact VARCHAR)
+RETURNS TABLE(first_name VARCHAR, last_name VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT u.first_name, u.last_name
+    FROM users u 
+    JOIN reservations r ON u.id = r.user_id 
+    JOIN users admin ON r.admin_id = admin.id
+    WHERE (admin.email = p_admin_contact OR admin.phone = p_admin_contact) 
+      AND admin.role = 'admin' 
+      AND r.status = 'cancelled';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. لیست بلیط‌های یک شهر خاص
+CREATE OR REPLACE FUNCTION get_tickets_by_city(p_city VARCHAR)
+RETURNS TABLE(ticket_id INT, home_team VARCHAR, away_team VARCHAR, venue VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT t.id, t.home_team, t.away_team, t.venue
+    FROM tickets t 
+    JOIN reservations r ON t.id = r.ticket_id 
+    WHERE t.city = p_city AND r.status = 'paid';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 4. جستجو با یک عبارت (در تیم‌ها، جایگاه، نام کاربر، ورزشگاه)
+CREATE OR REPLACE FUNCTION search_tickets(search_term VARCHAR)
+RETURNS TABLE(ticket_id INT, home_team VARCHAR, away_team VARCHAR, venue VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT t.id, t.home_team, t.away_team, t.venue
+    FROM tickets t 
+    LEFT JOIN reservations r ON t.id = r.ticket_id 
+    LEFT JOIN users u ON r.user_id = u.id
+    WHERE t.home_team ILIKE '%' || search_term || '%' 
+       OR t.away_team ILIKE '%' || search_term || '%' 
+       OR t.venue ILIKE '%' || search_term || '%' 
+       OR t.seat_tier ILIKE '%' || search_term || '%'
+       OR u.first_name ILIKE '%' || search_term || '%' 
+       OR u.last_name ILIKE '%' || search_term || '%';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 5. دریافت اطلاعات همشهری‌های یک کاربر
+CREATE OR REPLACE FUNCTION get_users_in_same_city(p_contact VARCHAR)
+RETURNS TABLE(first_name VARCHAR, last_name VARCHAR, city VARCHAR) AS $$
+DECLARE 
+    user_city VARCHAR;
+BEGIN
+    SELECT u.city INTO user_city 
+    FROM users u 
+    WHERE u.email = p_contact OR u.phone = p_contact 
+    LIMIT 1;
+
+    RETURN QUERY
+    SELECT u.first_name, u.last_name, u.city 
+    FROM users u 
+    WHERE u.city = user_city 
+      AND u.email != p_contact 
+      AND u.phone != p_contact;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 6. لیست n کاربر با بیشترین خرید از یک تاریخ به بعد
+CREATE OR REPLACE FUNCTION get_top_users_since(p_date TIMESTAMP, p_limit INT)
+RETURNS TABLE(first_name VARCHAR, last_name VARCHAR, purchase_count BIGINT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.first_name, u.last_name, COUNT(p.id)
+    FROM users u 
+    JOIN reservations r ON u.id = r.user_id 
+    JOIN payments p ON r.id = p.reservation_id
+    WHERE p.status = 'success' AND p.paid_at >= p_date 
+    GROUP BY u.id 
+    ORDER BY COUNT(p.id) DESC 
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 7. بلیط‌های کنسل شده یک نوع مسابقه
+CREATE OR REPLACE FUNCTION get_cancelled_by_sport(p_sport_type VARCHAR)
+RETURNS TABLE(ticket_id INT, home_team VARCHAR, away_team VARCHAR, match_date TIMESTAMP) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT t.id, t.home_team, t.away_team, t.match_date
+    FROM tickets t 
+    JOIN reservations r ON t.id = r.ticket_id
+    WHERE r.status = 'cancelled' AND t.sport_type = p_sport_type 
+    ORDER BY t.match_date DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 8. کاربرانی که بیشترین گزارش را در یک موضوع خاص ثبت کرده‌اند
+CREATE OR REPLACE FUNCTION get_top_reporters_by_category(p_category VARCHAR)
+RETURNS TABLE(first_name VARCHAR, last_name VARCHAR, report_count BIGINT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.first_name, u.last_name, COUNT(rep.id)
+    FROM users u 
+    JOIN reports rep ON u.id = rep.user_id
+    WHERE rep.category = p_category 
+    GROUP BY u.id 
+    ORDER BY COUNT(rep.id) DESC;
+END;
+$$ LANGUAGE plpgsql;
