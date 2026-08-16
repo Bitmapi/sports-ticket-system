@@ -84,3 +84,26 @@ CREATE TABLE basketball_details (
     seat_num INT,
     features JSONB
 );
+
+CREATE INDEX idx_tickets_match_date ON tickets(match_date);
+CREATE INDEX idx_reservations_status ON reservations(status);
+
+INSERT INTO users (first_name, last_name, phone, email, role, city, password_hash)
+VALUES ('علی', 'محمدی', '09121112233', 'ali@example.com', 'spectator', 'تهران', 'hash_pass_123');
+
+INSERT INTO tickets (sport_type, home_team, away_team, match_date, venue, price, capacity, seat_tier, organizer_id)
+VALUES ('football', 'پرسپولیس', 'استقلال', '2026-09-20 18:00:00', 'ورزشگاه آزادی', 150000.00, 50000, 'VIP', 1);
+
+INSERT INTO football_details (ticket_id, tournament, venue_name, seat_tier, row_num, seat_num, ticket_type, features)
+VALUES (1, 'لیگ برتر', 'آزادی', 'VIP', 5, 12, 'ویژه', '{"has_parking": true, "roofed": true}');
+
+INSERT INTO reservations (user_id, ticket_id, status, expires_at)
+VALUES (1, 1, 'temporary', CURRENT_TIMESTAMP + INTERVAL '10 minutes');
+
+SELECT t.id, t.home_team, t.away_team, t.price, f.venue_name, f.seat_num, f.features
+FROM tickets t
+JOIN football_details f ON t.id = f.ticket_id;
+
+SELECT u.first_name, u.last_name, r.status, r.expires_at
+FROM reservations r
+JOIN users u ON r.user_id = u.id;
