@@ -403,3 +403,37 @@ BEGIN
     ORDER BY COUNT(rep.id) DESC;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+-- Test Func 1 , دریافت ایمیل/تلفن و بازگرداندن لیست بلیط‌ها
+SELECT * FROM get_user_tickets('elizabeth@example.com');
+-- user id = 2 
+
+-- Test Func 2 , نام کاربرانی که رزروشان توسط ادمین خاصی لغو شده
+SELECT * FROM get_cancelled_users_by_admin('09121000004');
+-- expected : Raymond Reddington
+
+-- Test func 3 , لیست تمام بلیط‌های فروخته‌شده در شهر تهران
+SELECT * FROM get_tickets_by_city('Tehran');
+-- expected : بلیط‌های مسابقات پرسپولیس، پیکان، سایپا و مهرم
+
+-- Test func 4 , جستجو با یک عبارت (در تیم‌ها، جایگاه، نام کاربر، ورزشگاه)
+SELECT * FROM search_tickets('Azadi');
+-- expected : تمام بلیط‌های مربوط به ورزشگاه آزادی و سالن‌های آن
+
+-- Test func 5 , دریافت اطلاعات همشهری‌های یک کاربر
+SELECT * FROM get_users_in_same_city('samar@example.com');
+-- خروجی مورد انتظار: Aram Mojtabai (شهر شیراز)
+
+-- Test func 6 , لیست 2 خریدار برتر از تاریخ داده شده به بعد
+SELECT * FROM get_top_users_since('2025-01-01 00:00:00', 2);
+-- expected : Elizabeth Keen با ۳ خرید و Donald Ressler با ۱ خرید
+
+-- Test func 7 , لیست مسابقات کنسل‌شده رشته فوتبال
+SELECT * FROM get_cancelled_by_sport('football');
+-- expected : Persepolis vs Esteghlal با شناسه بلیط ۱
+
+-- Test func 8 , کاربرانی که بیشترین گزارش را در یک موضوع خاص ثبت کردند
+SELECT * FROM get_top_reporters_by_category('Pricing Issue');
+-- expected : Raymond Reddington، Elizabeth Keen و Donald Ressler با ۱ گزارش
