@@ -107,3 +107,83 @@ INSERT INTO reports (user_id, reference_id, category, description, status) VALUE
 
 -- next step >>>>>>>>>>>>>>>
 
+-- 1. کاربرانی که تا به حال هیچ بلیطی رزرو نکرده‌اند
+SELECT first_name, last_name 
+FROM users 
+WHERE id NOT IN (SELECT user_id FROM reservations);
+
+-- 2. تمام کاربرانی که حداقل یک بلیط خریده‌اند (پرداخت موفق)
+SELECT DISTINCT u.first_name, u.last_name 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+WHERE r.status = 'paid';
+
+-- 3. مجموع پرداخت‌های هر کاربر در ماه‌های مختلف
+SELECT u.first_name, u.last_name, EXTRACT(MONTH FROM p.paid_at) AS month, SUM(p.amount) AS total_paid
+FROM users u 
+JOIN payments p ON u.id = p.user_id 
+WHERE p.status = 'success' 
+GROUP BY u.id, month;
+
+-- 4. لیست کاربرانی که در هر شهر فقط یک بار بلیط خریداری کرده‌اند
+SELECT u.first_name, u.last_name, t.city 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+JOIN tickets t ON r.ticket_id = t.id 
+WHERE r.status = 'paid' 
+GROUP BY u.id, t.city 
+HAVING COUNT(r.id) = 1;
+
+-- 5. اطلاعات کاربری که جدیدترین بلیط را خریداری کرده است
+SELECT u.* 
+FROM users u 
+JOIN payments p ON u.id = p.user_id 
+WHERE p.status = 'success' 
+ORDER BY p.paid_at DESC 
+LIMIT 1;
+
+-- 6. شماره تلفن یا ایمیل کاربرانی که پرداختشان بیشتر از میانگین پرداخت کل است
+SELECT u.phone, u.email 
+FROM users u 
+JOIN payments p ON u.id = p.user_id 
+WHERE p.status = 'success' 
+GROUP BY u.id 
+HAVING SUM(p.amount) > (
+    SELECT AVG(total_paid) 
+    FROM (SELECT SUM(amount) AS total_paid FROM payments WHERE status = 'success' GROUP BY user_id) AS sub
+);
+
+-- 7. تعداد بلیط‌های فروخته‌شده به ازای هر نوع مسابقه ورزشی
+SELECT t.sport_type, COUNT(r.id) AS sold_tickets 
+FROM tickets t 
+JOIN reservations r ON t.id = r.ticket_id 
+WHERE r.status = 'paid' 
+GROUP BY t.sport_type;
+
+-- 8. نام 3 کاربر با بیشترین خرید بلیط در هفته اخیر
+SELECT u.first_name, u.last_name 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+JOIN payments p ON r.id = p.reservation_id
+WHERE p.status = 'success' AND p.paid_at >= CURRENT_DATE - INTERVAL '7 days' 
+GROUP BY u.id 
+ORDER BY COUNT(r.id) DESC 
+LIMIT 3;
+
+-- 9. تعداد بلیط‌های فروخته‌شده در استان تهران به تفکیک شهر
+SELECT u.city, COUNT(r.id) AS sold_count 
+FROM users u 
+JOIN reservations r ON u.id = r.user_id 
+WHERE r.status = 'paid' AND u.province = 'Tehran' 
+GROUP BY u.city;
+
+-- 10. نام شهرهایی که قدیمی‌ترین کاربر ثبت‌نام‌شده از آنجا خرید داشته است
+SELECT DISTINCT t.city 
+FROM tickets t 
+JOIN reservations r ON t.id = r.ticket_id 
+WHERE r.status = 'paid' AND r.user_id = (SELECT id FROM users ORDER BY created_at ASC LIMIT 1);
+
+-- 11. نام پشتیبان‌های سایت
+SELECT first_name, last_name 
+FROM users 
+WHERE role = 'admin';
